@@ -31,45 +31,43 @@ class KafkaConsumer:
         self.offset_earliest = offset_earliest
 
         #
-        #
-        # TODO: Configure the broker properties below. Make sure to reference the project README
-        # and use the Host URL for Kafka and Schema Registry!
-        #
+        # Broker Configuration
         #
         self.broker_properties = {
-                #
-                # TODO
-                #
+            "bootstrap.servers": "localhost:9092",
+            "group.id": f"group_{topic_name_pattern}", # Unique group ID per topic pattern
+            "auto.offset.reset": "earliest" if offset_earliest else "latest",
+            #"enable.auto.commit": False,
         }
 
-        # TODO: Create the Consumer, using the appropriate type.
+        # Create Consumer: Avro or normal
         if is_avro is True:
+            logger.info(f"Creating avro consumer for topic {topic_name_pattern}")
             self.broker_properties["schema.registry.url"] = "http://localhost:8081"
-            #self.consumer = AvroConsumer(...)
+            self.consumer = AvroConsumer(self.broker_properties)
         else:
-            #self.consumer = Consumer(...)
+            logger.info(f"Creating normal consumer for topic {topic_name_pattern}")
+            self.consumer = Consumer(self.broker_properties)
             pass
 
         #
+        # Subscribe with on_assign callback
         #
-        # TODO: Configure the AvroConsumer and subscribe to the topics. Make sure to think about
-        # how the `on_assign` callback should be invoked.
-        #
-        #
-        # self.consumer.subscribe( TODO )
+        logger.info(f"subscribing for topic {topic_name_pattern}")
+        self.consumer.subscribe([topic_name_pattern], on_assign=self.on_assign)
 
     def on_assign(self, consumer, partitions):
         """Callback for when topic assignment takes place"""
-        # TODO: If the topic is configured to use `offset_earliest` set the partition offset to
-        # the beginning or earliest
-        logger.info("on_assign is incomplete - skipping")
-        for partition in partitions:
-            pass
-            #
-            #
-            # TODO
-            #
-            #
+
+        logger.info(f"on_assign invoked for {self.topic_name_pattern}")
+        
+         if self.offset_earliest:
+            for partition in partitions:
+                logger.info(
+                    f"Setting offset to earliest for partition {partition.partition}"
+                )
+                partition.offset = confluent_kafka.OFFSET_BEGINNING
+
 
         logger.info("partitions assigned for %s", self.topic_name_pattern)
         consumer.assign(partitions)
@@ -84,21 +82,48 @@ class KafkaConsumer:
 
     def _consume(self):
         """Polls for a message. Returns 1 if a message was received, 0 otherwise"""
-        #
-        #
-        # TODO: Poll Kafka for messages. Make sure to handle any errors or exceptions.
-        # Additionally, make sure you return 1 when a message is processed, and 0 when no message
-        # is retrieved.
-        #
-        #
-        logger.info("_consume is incomplete - skipping")
+        
+        try:
+            msg = self.consumer.poll(self.consume_timeout)
+        except SerializerError as e:
+            logger.error(f"Deserialization error: {e}")
+            return 0
+            
+        except Exception as e:
+            logger.error(f"Unexpected error while polling Kafka: {e}")
+            return 0
+
+        if msg is None:
+            logger.info("Message not received")
+            return 0
+
+        if msg.error():
+            # PARTITION_EOF is not a crash-worthy error, it just means we reached the end of the log
+            if msg.error().code() == KafkaError._PARTITION_EOF:
+                logger.debug(f"End of partition reached for {msg.topic()}")
+            else:
+                logger.error(f"Kafka error: {msg.error()}")
+            return 0
+
+        # Successful message
+        try:
+            self.message_handler(msg)
+            return 1
+        except Exception as e:
+            logger.exception(f"Error processing message: {e}")
+
         return 0
 
 
     def close(self):
-        """Cleans up any open kafka consumers"""
-        #
-        #
-        # TODO: Cleanup the kafka consumer
-        #
-        #
+        """Cleans up the consumer"""
+          
+        if self.consumer is not None:
+            logger.info("Closing consumer for topic pattern %s", self.topic_name_pattern)
+            try:
+                self.consumer.close()
+                logger.info(f"Closed consumer for topic pattern {self.topic_name_pattern}")
+            except Exception as e:
+                logger.error(f"Error closing consumer: {e}")
+        else:
+            logger.error("Not closing as consumer is not created for %s", self.topic_name_pattern)
