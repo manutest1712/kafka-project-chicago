@@ -231,3 +231,88 @@ Once the simulation is running, you may hit `Ctrl+C` at any time to exit.
 5. `python server.py`
 
 Once the server is running, you may hit `Ctrl+C` at any time to exit.
+
+
+
+
+#### Commands - Connector:
+
+curl -X POST -H 'Content-Type: application/json' -d '{
+    "name": "first-connector",
+    "config": {
+        "connector.class": "FileStreamSource",
+        "tasks.max": 1,
+        "file": "/workspace/home/my.log",
+        "topic": "kafka-connect-logs-manu",
+		"key.converter": "org.apache.kafka.connect.storage.StringConverter",
+		"value.converter": "org.apache.kafka.connect.storage.StringConverter",
+		"internal.key.converter": "org.apache.kafka.connect.storage.StringConverter",
+		"internal.value.converter": "org.apache.kafka.connect.storage.StringConverter",
+		"key.converter.schemas.enable": "false",
+		"value.converter.schemas.enable": "false",
+		"internal.key.converter.schemas.enable": "false",
+		"internal.value.converter.schemas.enable": "false"
+    }
+  }' \
+  http://localhost:8083/connectors
+  
+  
+  
+  curl -X POST -H 'Content-Type: application/json' -d '{
+    "name": "first-connector-test",
+    "config": {
+        "connector.class": "FileStreamSource",
+        "tasks.max": 1,
+        "file": "/var/log/journal/confluent-kafka-connect.service.log",
+        "topic": "kafka-connect-logs"
+    }
+  }' \
+  http://localhost:8083/connectors
+  
+  
+  curl -X GET http://localhost:8083/connectors/first-connector/status | python -m json.tool
+  curl -X GET http://localhost:8083/connectors/first-connector-test/status | python -m json.tool
+  curl -X DELETE http://localhost:8083/connectors/first-connector
+  
+    curl -X GET http://localhost:8083/connectors/clicks-jdbc/status | python -m json.tool
+  
+  
+  
+  
+curl -X PUT -H "Content-Type: application/json" \
+  http://localhost:8083/connectors/first-connector/config \
+  -d '{
+    "connector.class": "FileStreamSource",
+    "tasks.max": 1,
+    "file": "/workspace/home/my.log",
+    "topic": "kafka-connect-logs-manu",
+    "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+    "value.converter": "org.apache.kafka.connect.storage.StringConverter"
+  }'
+  
+  
+  curl -X POST http://localhost:8083/connectors \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "clicks-jdbc",
+    "config": {
+      "connector.class": "io.confluent.connect.jdbc.JdbcSourceConnector",
+      "topic.prefix": "solution3.",
+      "mode": "incrementing",
+      "incrementing.column.name": "id",
+      "table.whitelist": "clicks",
+      "tasks.max": 1,
+      "connection.url": "jdbc:postgresql://localhost:5432/classroom",
+      "connection.user": "root",
+      "connection.password": "",
+      "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+      "key.converter.schemas.enable": "false",
+      "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+      "value.converter.schemas.enable": "false"
+    }
+  }'
+
+kafka-console-consumer \
+  --bootstrap-server localhost:9092 \
+  --topic solution3.clicks \
+  --from-beginning 
