@@ -30,7 +30,7 @@ class Station(Producer):
         #
         # Filled per station topic name
         #
-        topic_name = f"cta.station.arrivals.{station_name}"
+        topic_name = f"org.city.station.arrivals.{station_name}"
 
         super().__init__(
             topic_name,
