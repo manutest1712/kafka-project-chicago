@@ -316,3 +316,10 @@ kafka-console-consumer \
   --bootstrap-server localhost:9092 \
   --topic solution3.clicks \
   --from-beginning 
+
+
+  kafka-avro-console-consumer \
+  --bootstrap-server localhost:9092 \
+  --topic org.city.weather \
+  --from-beginning \
+  --property schema.registry.url=http://localhost:8081
