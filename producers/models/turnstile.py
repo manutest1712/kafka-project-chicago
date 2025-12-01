@@ -45,10 +45,21 @@ class Turnstile(Producer):
 
         self.station = station
         self.turnstile_hardware = TurnstileHardware(station)
+        
+    def to_epoch_millis(self, ts):
+        if isinstance(ts, int):
+            return ts
+        if isinstance(ts, float):
+            return int(ts)
+        if hasattr(ts, "timestamp"):   # datetime
+            return int(ts.timestamp() * 1000)
+        raise TypeError(f"Unsupported timestamp type: {type(ts)}")
 
     def run(self, timestamp, time_step):
         """Simulates riders entering through the turnstile."""
 
+        logger.info(f"Producing turnstile event for station {self.station.name} at time {timestamp}")
+        
         # Number of simulated entries during this interval
         num_entries = self.turnstile_hardware.get_entries(timestamp, time_step)
 
@@ -59,7 +70,7 @@ class Turnstile(Producer):
             try:
                 self.producer.produce(
                     topic=self.topic_name,
-                    key={"timestamp": timestamp},
+                    key={"timestamp": self.to_epoch_millis(timestamp)},
                     value={
                         "station_id": self.station.station_id,
                         "station_name": self.station.name,
