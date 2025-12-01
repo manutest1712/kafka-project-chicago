@@ -70,7 +70,7 @@ class Station(Producer):
                 f"Produced arrival event to {self.topic_name} for train {train.train_id}"
             )
         except Exception as e:
-            logger.error(f"❌ Failed to produce arrival event: {e}")
+            logger.error(f"❌ Failed to produce arrival event: {e} for train {train.train_id}")
 
 
     def __str__(self):
