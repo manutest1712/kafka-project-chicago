@@ -30,10 +30,7 @@ class Turnstile(Producer):
             .replace("'", "")
         )
 
-        #
-        # Filled per station topic name
-        #
-        topic_name = f"org.city.turnstile.{station_name}"
+        topic_name = f"org.city.turnstile"
 
         super().__init__(
             topic_name,
